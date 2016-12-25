@@ -22,14 +22,15 @@ wget -nv "$URL_CALLEJERO"
 # Download rdf with the source:date information
 wget -nv "$URL_RDF" -O callejero.rdf
 FECHA=`grep "dct:modified" callejero.rdf | awk -F '>' '{print $2}' | awk -F 'T' '{print $1}'`
-#cp ../2* . ############################################################################################# QUITAR, DESCOMENTAR WGETS
-
 
 echo "# STEP 2/6 Converting to UTF-8 and modifying some fields"
 # Convert to UTF-8, change coordinate fields name (UTM ETRS89 = EPSG:25830)
 iconv -f ISO-8859-15 -t UTF-8 "213605-3-callejero oficial madrid.csv" | perl -pe 's/UTMX_ETRS/x/g' | perl -pe 's/UTMY_ETRS/y/g' > callejero-25830.csv
 iconv -f ISO-8859-15 -t UTF-8 "200078-1-distritos-barrios.csv" | awk -F ';' '{print $1";"$2";"$4}' | perl -pe 's/  //g' | perl -pe 's/ "/"/g' | tail -n +2 > barrios.csv
 iconv -f ISO-8859-15 -t UTF-8 "200078-4-distritos-barrios.csv" | awk -F ';' '{print $2";"$4}' | perl -pe 's/  //g' | perl -pe 's/ "/"/g' | tail -n +2 > distritos.csv
+
+# Filter to get only portal and garage nodes
+egrep 'PORTAL|GARAJE' callejero-25830.csv > /tmp/y ; mv /tmp/y callejero-25830.csv
 
 echo "# STEP 3/6 Composing full street name and fixing some capitalization"
 while IFS=$';' read -r -a arry
@@ -101,8 +102,6 @@ do
      echo '    <tag k="addr:housenumber" v="'$NUMERO_COMPLETO'"/>' >> "$OUT_FILE"
    else
      echo "ERROR: $NUMERO_COMPLETO ${arry[4]}"
-     echo 'ERROR: '$NUMERO_COMPLETO' '${arry[4]}''
-
    fi
 
 # TIPO_NDP
@@ -110,16 +109,16 @@ do
      echo '    <tag k="building" v="yes"/>' >> "$OUT_FILE"
      echo '    <tag k="entrance" v="main"/>' >> "$OUT_FILE"
      echo '    <tag k="door" v="yes"/>' >> "$OUT_FILE"
-   elif [ "${arry[7]}" = "FRENTE FACHADA" ] ; then
-     echo '    <tag k="building" v="yes"/>' >> "$OUT_FILE"
-   elif [ "${arry[7]}" = "GARAGE" ] ; then
+#   elif [ "${arry[7]}" = "FRENTE FACHADA" ] ; then
+#     echo '    <tag k="building" v="yes"/>' >> "$OUT_FILE"
+   elif [ "${arry[7]}" = "GARAJE" ] ; then
      echo '    <tag k="building" v="garages"/>' >> "$OUT_FILE"
      echo '    <tag k="entrance" v="yes"/>' >> "$OUT_FILE"
      echo '    <tag k="door" v="overhead"/>' >> "$OUT_FILE"
-   elif [ "${arry[7]}" = "JARDIN" ] ; then
-     echo '    <tag k="leisure" v="garden"/>' >> "$OUT_FILE"
-   elif [ "${arry[7]}" = "PARCELA" ] ; then
-     echo '    <tag k="landuse" v="allotments"/>' >> "$OUT_FILE" # I wish they were
+#   elif [ "${arry[7]}" = "JARDIN" ] ; then
+#     echo '    <tag k="leisure" v="garden"/>' >> "$OUT_FILE"
+#   elif [ "${arry[7]}" = "PARCELA" ] ; then
+#     echo '    <tag k="landuse" v="allotments"/>' >> "$OUT_FILE" # I wish they were
    fi
 
 # Districts
